@@ -41,6 +41,12 @@ class Cacher:
         return pickle.loads(bytes.fromhex(data.get(key).get('data')))
 
     def set(self, key, data, timeout=None):
-        data = {**self.get(), key: {'data': pickle.dumps(data).hex(), 'timeout': int(time.time()) + timeout}}
+        data = {
+            **self.get(),
+            key: {
+                'data': pickle.dumps(data).hex(),
+                'timeout': int(time.time()) + timeout if timeout else None
+            }
+        }
         with open(self.path, 'w') as f:
             json.dump(data, f, indent=4)

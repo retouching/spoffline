@@ -12,3 +12,7 @@ class DownloaderException(Exception):
 
 class SpotifyException(Exception):
     pass
+
+
+class FFMPEGException(Exception):
+    pass

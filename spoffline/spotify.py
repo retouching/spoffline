@@ -1,3 +1,4 @@
+import hashlib
 import os.path
 from contextlib import contextmanager
 
@@ -16,6 +17,12 @@ class Spotify:
     def __init__(self):
         self.cache = Cacher('spotify.api')
         os.makedirs(os.path.dirname(self.credentials_cache_path), exist_ok=True)
+
+    @property
+    def md5credentials(self):
+        hash_credentials = hashlib.md5()
+        hash_credentials.update(f'{config.credentials.email}:{config.credentials.password}'.encode())
+        return hash_credentials.hexdigest()
 
     @property
     def credentials_cache_path(self):
@@ -45,18 +52,25 @@ class Spotify:
 
         self.cache.set('api:token', req.json().get('access_token'), req.json().get('expires_in') - 600)
 
+        return req.json().get('access_token')
+
     def get_user_session(self):
         if os.path.exists(self.credentials_cache_path):
-            session = Session.Builder(Session.Configuration(
-                stored_credentials_file=self.credentials_cache_path,
-                store_credentials=True,
-                cache_enabled=True,
-                cache_dir=os.path.dirname(self.credentials_cache_path),
-                do_cache_clean_up=True,
-                retry_on_chunk_error=True,
-            )).stored_file(self.credentials_cache_path).create()
-            if session.is_valid():
-                return session
+            last_credentials = self.cache.get('credentials:hash') or ''
+
+            if last_credentials == self.md5credentials:
+                session = Session.Builder(Session.Configuration(
+                    stored_credentials_file=self.credentials_cache_path,
+                    store_credentials=True,
+                    cache_enabled=True,
+                    cache_dir=os.path.dirname(self.credentials_cache_path),
+                    do_cache_clean_up=True,
+                    retry_on_chunk_error=True,
+                )).stored_file(self.credentials_cache_path).create()
+                if session.is_valid():
+                    return session
+            else:
+                os.unlink(self.credentials_cache_path)
 
         session = Session.Builder(Session.Configuration(
             stored_credentials_file=self.credentials_cache_path,
@@ -69,6 +83,8 @@ class Spotify:
             config.credentials.email,
             config.credentials.password
         ).create()
+
+        self.cache.set('credentials:hash', self.md5credentials)
 
         return session
 

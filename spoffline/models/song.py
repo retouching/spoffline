@@ -1,3 +1,4 @@
+import re
 from typing import List
 
 from pydantic import BaseModel
@@ -14,3 +15,7 @@ class Song(BaseModel):
     artists: List[str]
     album: str
     cover: SongCover
+
+    @property
+    def filename(self):
+        return re.sub(r' +', ' ', re.sub(r'[/\\:@?<>"]+', ' ', self.name))
