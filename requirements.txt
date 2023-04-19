@@ -3,3 +3,6 @@ click
 mutagen
 pydantic
 httpx
+PyYAML
+iso3166
+pproxy
