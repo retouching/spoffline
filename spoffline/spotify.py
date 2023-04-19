@@ -4,6 +4,7 @@ from contextlib import contextmanager
 import httpx
 from librespot.audio.decoders import AudioQuality, VorbisOnlyAudioQuality
 from librespot.core import Session
+from librespot.metadata import TrackId
 
 from spoffline.cacher import Cacher
 from spoffline.configuration import config
@@ -117,8 +118,11 @@ class Spotify:
     @contextmanager
     def get_track_content(self, track_id):
         stream = self.get_user_session().content_feeder().load(
-            track_id,
-            VorbisOnlyAudioQuality(AudioQuality.VERY_HIGH),
+            TrackId.from_uri(f'spotify:track:{track_id}'),
+            VorbisOnlyAudioQuality(
+                # TODO: Autodetect if account is premium or not
+                AudioQuality.VERY_HIGH if config.credentials.is_premium else AudioQuality.HIGH
+            ),
             False,
             None
         ).input_stream.stream()

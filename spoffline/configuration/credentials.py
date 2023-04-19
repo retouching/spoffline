@@ -6,3 +6,4 @@ class CredentialsConfiguration(BaseModel):
     client_secret: str
     email: str
     password: str
+    is_premium: bool
