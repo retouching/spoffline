@@ -1,4 +1,9 @@
+import os.path
+from contextlib import contextmanager
+
 import httpx
+from librespot.audio.decoders import AudioQuality, VorbisOnlyAudioQuality
+from librespot.core import Session
 
 from spoffline.cacher import Cacher
 from spoffline.configuration import config
@@ -8,7 +13,16 @@ from spoffline.models.song import Song, SongCover
 
 class Spotify:
     def __init__(self):
-        self.cache = Cacher('spotify')
+        self.cache = Cacher('spotify.api')
+        os.makedirs(os.path.dirname(self.credentials_cache_path), exist_ok=True)
+
+    @property
+    def credentials_cache_path(self):
+        return os.path.join(
+            config.paths.cache,
+            'spotify',
+            'credentials.json'
+        )
 
     def get_api_token(self):
         token = self.cache.get('api:token')
@@ -29,6 +43,33 @@ class Spotify:
             raise SpotifyException('Unable to fetch token')
 
         self.cache.set('api:token', req.json().get('access_token'), req.json().get('expires_in') - 600)
+
+    def get_user_session(self):
+        if os.path.exists(self.credentials_cache_path):
+            session = Session.Builder(Session.Configuration(
+                stored_credentials_file=self.credentials_cache_path,
+                store_credentials=True,
+                cache_enabled=True,
+                cache_dir=os.path.dirname(self.credentials_cache_path),
+                do_cache_clean_up=True,
+                retry_on_chunk_error=True,
+            )).stored_file(self.credentials_cache_path).create()
+            if session.is_valid():
+                return session
+
+        session = Session.Builder(Session.Configuration(
+            stored_credentials_file=self.credentials_cache_path,
+            store_credentials=True,
+            cache_enabled=True,
+            cache_dir=os.path.dirname(self.credentials_cache_path),
+            do_cache_clean_up=True,
+            retry_on_chunk_error=True,
+        )).user_pass(
+            config.credentials.email,
+            config.credentials.password
+        ).create()
+
+        return session
 
     def get_track_infos(self, track_id):
         song = self.cache.get(f'song:infos:{track_id}')
@@ -72,3 +113,17 @@ class Spotify:
         self.cache.set(f'song:infos:{track_id}', song, 60 * 60 * 24 * 7)
 
         return song
+
+    @contextmanager
+    def get_track_content(self, track_id):
+        stream = self.get_user_session().content_feeder().load(
+            track_id,
+            VorbisOnlyAudioQuality(AudioQuality.VERY_HIGH),
+            False,
+            None
+        ).input_stream.stream()
+
+        try:
+            yield stream
+        finally:
+            stream.close()
