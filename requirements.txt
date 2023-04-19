@@ -2,3 +2,4 @@ librespot
 click
 mutagen
 pydantic
+httpx
