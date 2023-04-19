@@ -3,11 +3,13 @@ import yaml
 
 from pydantic import BaseModel
 
+from spoffline.configuration.credentials import CredentialsConfiguration
 from spoffline.helpers import project_path
 from spoffline.configuration.paths import PathsConfiguration
 
 
 class Configuration(BaseModel):
+    credentials: CredentialsConfiguration
     paths: PathsConfiguration = PathsConfiguration()
 
     @staticmethod

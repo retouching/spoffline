@@ -8,3 +8,7 @@ class HolaProxyException(Exception):
 
 class DownloaderException(Exception):
     pass
+
+
+class SpotifyException(Exception):
+    pass

@@ -1,3 +1,3 @@
-from ffdevine.configuration.configuration import Configuration
+from spoffline.configuration.configuration import Configuration
 
 config = Configuration.load()

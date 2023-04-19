@@ -13,4 +13,4 @@ class Song(BaseModel):
     name: str
     artists: List[str]
     album: str
-    image: SongCover
+    cover: SongCover

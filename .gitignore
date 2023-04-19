@@ -4,6 +4,10 @@
 /binaries/*
 !/binaries/.gitkeep
 test.*
+config.yml
+*.jpeg
+*.mp3
+*.ogg
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
