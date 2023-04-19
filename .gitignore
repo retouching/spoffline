@@ -1,3 +1,10 @@
+/.idea/*
+/downloads/*
+/cache/*
+/binaries/*
+!/binaries/.gitkeep
+test.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

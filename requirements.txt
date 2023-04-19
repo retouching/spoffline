@@ -1,0 +1,4 @@
+librespot
+click
+mutagen
+pydantic
