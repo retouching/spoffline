@@ -1,3 +1,4 @@
+import hashlib
 import mimetypes
 import os
 import random
@@ -9,7 +10,6 @@ from mutagen.mp3 import MP3
 
 from spoffline.configuration import config
 from spoffline.helpers.binaries import Binaries
-from spoffline.models.song import Song
 from spoffline.helpers.exceptions import FFMPEGException
 
 
@@ -37,10 +37,7 @@ def convert_to_mp3(filename, output):
     os.rename(temp_file, output)
 
 
-def apply_metadata(filename, song: Song):
-    if type(song) != Song:
-        raise ValueError('You must supply a valid song instance to use')
-
+def apply_mp3_metadata(filename, *, name=None, artists=None, album=None, cover_url=None):
     mimetype, _ = mimetypes.guess_type(filename)
 
     if mimetype != 'audio/mpeg':
@@ -53,28 +50,43 @@ def apply_metadata(filename, song: Song):
     if handler.tags is None:
         handler.add_tags()
 
-    handler.tags['TT2'] = TT2(encoding=3, text=song.name)
-    handler.tags['TPE1'] = TPE1(encoding=3, text=[a.name for a in song.artists])
-    handler.tags['TALB'] = TALB(encoding=3, text=song.album.name)
+    if name:
+        handler.tags['TT2'] = TT2(encoding=3, text=name)
 
-    album_art_path = os.path.join(config.paths.cache, 'spotify/covers', f'{song.album.filename}.jpg')
-    if not os.path.exists(album_art_path):
-        os.makedirs(os.path.dirname(album_art_path), exist_ok=True)
+    if artists:
+        if type(artists) != list or next(filter(
+            lambda a: type(a) != str,
+            artists
+        ), None):
+            raise ValueError('Invalid artists metadata found')
+        handler.tags['TPE1'] = TPE1(encoding=3, text=artists)
 
-        with httpx.Client() as client:
-            req = client.get(song.album.cover_url)
-            req.raise_for_status()
+    if album:
+        handler.tags['TALB'] = TALB(encoding=3, text=album)
 
-        with open(album_art_path, 'w+b') as f:
-            f.write(req.content)
+    if cover_url:
+        cache_cover_name = hashlib.md5()
+        cache_cover_name.update(cover_url)
+        cache_cover_name = cache_cover_name.hexdigest()
 
-    with open(album_art_path, 'rb') as f:
-        handler.tags['APIC'] = APIC(
-            encoding=0,
-            mime=f'image/jpg',
-            type=3,
-            desc=u'Cover',
-            data=f.read()
-        )
+        album_art_path = os.path.join(config.paths.cache, 'spotify/covers', f'{cache_cover_name}.jpg')
+        if not os.path.exists(album_art_path):
+            os.makedirs(os.path.dirname(album_art_path), exist_ok=True)
+
+            with httpx.Client() as client:
+                req = client.get(cover_url)
+                req.raise_for_status()
+
+            with open(album_art_path, 'w+b') as f:
+                f.write(req.content)
+
+        with open(album_art_path, 'rb') as f:
+            handler.tags['APIC'] = APIC(
+                encoding=0,
+                mime=f'image/jpg',
+                type=3,
+                desc=u'Cover',
+                data=f.read()
+            )
 
     handler.save()
