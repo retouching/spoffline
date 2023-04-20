@@ -193,6 +193,54 @@ class Spotify:
 
         self.cache.set(f'album:{album_id}', songs, 60 * 60 * 24 * 7)
 
+    def get_playlist_tracks(self, playlist_id):
+        songs = self.cache.get(f'playlist:{playlist_id}')
+        if songs:
+            for song in songs:
+                yield song
+            return
+
+        songs = []
+        next_url = f'https://api.spotify.com/v1/playlists/{playlist_id}/tracks?offset=0&limit=100'
+
+        with self.get_api_session() as client:
+            while next_url is not None:
+                req = client.get(next_url)
+
+                if req.status_code != httpx.codes.OK:
+                    raise SpotifyException(f'Unable to fetch playlist tracks (HTTP code: {req.status_code})')
+
+                data = req.json()
+
+                songs_data = data.get('items')
+                next_url = data.get('next')
+
+                for song_data in songs_data:
+                    if song_data.get('track').get('type') != 'track' or song_data.get('is_local'):
+                        continue
+
+                    song = Song(
+                        id=song_data.get('track').get('id'),
+                        name=song_data.get('track').get('name'),
+                        artists=[a.get('name') for a in song_data.get('track').get('artists')],
+                        album=song_data.get('track').get('album').get('name'),
+                        cover_url=next(iter(sorted(
+                            song_data.get('track').get('album').get('images'),
+                            key=lambda i: i.get('height'),
+                            reverse=True
+                        ))).get('url')
+                    )
+
+                    self.cache.set(f'song:infos:{song.id}', song, 60 * 60 * 24 * 7)
+                    songs.append(song)
+
+                    yield song
+
+                if next_url:
+                    time.sleep(5)
+
+        self.cache.set(f'playlist:{playlist_id}', songs, 60 * 60 * 24 * 7)
+
     @contextmanager
     def get_track_content(self, track_id):
         playable_id = self.cache.get(f'song:playable:{track_id}')
