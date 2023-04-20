@@ -9,7 +9,7 @@ from spoffline.helpers import project_path
 class Commands(click.MultiCommand):
     @property
     def commands_path(self):
-        return os.path.join(project_path, 'ffdevine/commands')
+        return os.path.join(project_path, 'spoffline/commands')
 
     def list_commands(self, _):
         commands = []
@@ -26,7 +26,7 @@ class Commands(click.MultiCommand):
         if command not in commands:
             return None
 
-        command_class = importlib.import_module(f'ffdevine.commands.{command}')
+        command_class = importlib.import_module(f'spoffline.commands.{command}')
 
         if hasattr(command_class, 'cli'):
             return command_class.cli

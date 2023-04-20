@@ -37,7 +37,7 @@ def convert_to_mp3(filename, output):
     os.rename(temp_file, output)
 
 
-def apply_metadata(filename, song):
+def apply_metadata(filename, song: Song):
     if type(song) != Song:
         raise ValueError('You must supply a valid song instance to use')
 
@@ -54,16 +54,15 @@ def apply_metadata(filename, song):
         handler.add_tags()
 
     handler.tags['TT2'] = TT2(encoding=3, text=song.name)
-    handler.tags['TPE1'] = TPE1(encoding=3, text=song.artists)
-    handler.tags['TIT2'] = TALB(encoding=3, text=song.name)
-    handler.tags['TALB'] = TALB(encoding=3, text=song.album)
+    handler.tags['TPE1'] = TPE1(encoding=3, text=[a.name for a in song.artists])
+    handler.tags['TALB'] = TALB(encoding=3, text=song.album.name)
 
-    album_art_path = os.path.join(config.paths.cache, 'spotify/covers', song.album_art_filename)
+    album_art_path = os.path.join(config.paths.cache, 'spotify/covers', f'{song.album.filename}.jpg')
     if not os.path.exists(album_art_path):
         os.makedirs(os.path.dirname(album_art_path), exist_ok=True)
 
         with httpx.Client() as client:
-            req = client.get(song.cover_url)
+            req = client.get(song.album.cover_url)
             req.raise_for_status()
 
         with open(album_art_path, 'w+b') as f:
