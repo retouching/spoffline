@@ -1,8 +1,10 @@
+import mimetypes
 import os
 import random
 import subprocess
 
-from mutagen.id3 import APIC, ID3, TALB, TPE1, TRCK, TT2
+import httpx
+from mutagen.id3 import APIC, TALB, TPE1, TT2
 from mutagen.mp3 import MP3
 
 from spoffline.configuration import config
@@ -11,14 +13,14 @@ from spoffline.models.song import Song
 from spoffline.helpers.exceptions import FFMPEGException
 
 
-def convert_to_mp3(filename, output, kbps=320):
+def convert_to_mp3(filename, output):
     temp_file = os.path.join(config.paths.temp, f'{random.randbytes(16).hex()}.mp3')
 
     p = subprocess.Popen([
         Binaries.get('ffmpeg'),
         '-i', filename,
         '-c:a', 'libmp3lame',
-        '-b:a', f'{kbps}k',
+        '-b:a', f'{320 if config.credentials.is_premium else 160}k',
         '-y',
         temp_file
     ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -39,6 +41,11 @@ def apply_metadata(filename, song):
     if type(song) != Song:
         raise ValueError('You must supply a valid song instance to use')
 
+    mimetype, _ = mimetypes.guess_type(filename)
+
+    if mimetype != 'audio/mpeg':
+        raise ValueError('Only mp3 file can be processed')
+
     handler = MP3(filename)
     handler.delete()
     handler.save()
@@ -50,12 +57,25 @@ def apply_metadata(filename, song):
     handler.tags['TPE1'] = TPE1(encoding=3, text=song.artists)
     handler.tags['TIT2'] = TALB(encoding=3, text=song.name)
     handler.tags['TALB'] = TALB(encoding=3, text=song.album)
-    handler.tags['APIC'] = APIC(
-        encoding=0,
-        mime=f'image/{song.cover.ext}',
-        type=3,
-        desc=u'Cover',
-        data=song.cover.data
-    )
+
+    album_art_path = os.path.join(config.paths.cache, 'spotify/covers', song.album_art_filename)
+    if not os.path.exists(album_art_path):
+        os.makedirs(os.path.dirname(album_art_path), exist_ok=True)
+
+        with httpx.Client() as client:
+            req = client.get(song.cover_url)
+            req.raise_for_status()
+
+        with open(album_art_path, 'w+b') as f:
+            f.write(req.content)
+
+    with open(album_art_path, 'rb') as f:
+        handler.tags['APIC'] = APIC(
+            encoding=0,
+            mime=f'image/jpg',
+            type=3,
+            desc=u'Cover',
+            data=f.read()
+        )
 
     handler.save()
