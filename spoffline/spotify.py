@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from urllib.parse import parse_qs
 
 import httpx
+from librespot.audio.decoders import AudioQuality
 from librespot.core import Session
 
 from spoffline.cacher import Cacher
@@ -88,6 +89,9 @@ class Spotify:
                 self.set_cache(f'user:{self.md5credentials}', user_data, False)
 
         return user_data
+
+    def user_quality(self):
+        return AudioQuality.VERY_HIGH if self.user_data.get('product') == 'premium' else AudioQuality.HIGH
 
     def get_global_api_token(self):
         token = self.get_cache('api:token', False)
@@ -350,7 +354,7 @@ class Spotify:
                     } for a in item.get('artists')]
                 }
 
-                self.set_cache(f'tracks:{track.get("id")}', track)
+                self.set_cache(f'track:{track.get("id")}', track)
                 tracks.append(track)
 
                 yield track
@@ -483,6 +487,197 @@ class Spotify:
                 'albums': albums,
                 'next_url': next_url
             })
+
+            if next_url:
+                time.sleep(2)
+
+    def get_episode(self, episode_id, from_cache=True):
+        if type(episode_id) != str or len(episode_id) < 1:
+            raise SpotifyException('Invalid episode id')
+
+        if from_cache:
+            episode_or_exc = self.get_cache(f'episode:{episode_id}')
+
+            if episode_or_exc:
+                if type(episode_or_exc) == SpotifyException:
+                    raise episode_or_exc
+                return episode_or_exc
+
+        with self.get_api_session() as session:
+            req = session.get(f'/episodes/{episode_id}')
+
+        if req.status_code != httpx.codes.OK:
+            exc = SpotifyException(
+                'Episode not found' if req.status_code in [
+                    httpx.codes.BAD_REQUEST,
+                    httpx.codes.NOT_FOUND
+                ] else 'Unable to fetch episode'
+            )
+
+            if req.status_code in [
+                httpx.codes.BAD_REQUEST,
+                httpx.codes.NOT_FOUND
+            ]:
+                self.set_cache(f'episode:{episode_id}', exc)
+
+            raise exc
+
+        data = req.json()
+
+        if not data.get('is_playable', True):
+            raise SpotifyException('This episode is not available in your country')
+
+        image = next(iter(sorted(
+            data.get('show').get('images'),
+            key=lambda i: i.get('height') or 0,
+            reverse=True
+        )), None)
+
+        episode = {
+            'id': data.get('id'),
+            'name': data.get('name'),
+            'show': {
+                'id': data.get('show').get('id'),
+                'name': data.get('show').get('name'),
+                'cover': image.get('url') if image else None,
+                'episodes': data.get('show').get('total_episodes')
+            }
+        }
+
+        self.set_cache(f'episode:{episode_id}', episode)
+
+        return episode
+
+    def get_show(self, show_id, from_cache=True):
+        if type(show_id) != str or len(show_id) < 1:
+            raise SpotifyException('Invalid show id')
+
+        if from_cache:
+            show_or_exc = self.get_cache(f'show:{show_id}')
+
+            if show_or_exc:
+                if type(show_or_exc) == SpotifyException:
+                    raise show_or_exc
+                return show_or_exc
+
+        with self.get_api_session() as session:
+            req = session.get(f'/shows/{show_id}')
+
+        if req.status_code != httpx.codes.OK:
+            exc = SpotifyException(
+                'Show not found' if req.status_code in [
+                    httpx.codes.BAD_REQUEST,
+                    httpx.codes.NOT_FOUND
+                ] else 'Unable to fetch show'
+            )
+
+            if req.status_code in [
+                httpx.codes.BAD_REQUEST,
+                httpx.codes.NOT_FOUND
+            ]:
+                self.set_cache(f'show:{show_id}', exc)
+                self.set_cache(f'show:{show_id}:episodes', exc)
+
+            raise exc
+
+        data = req.json()
+
+        image = next(iter(sorted(
+            data.get('images'),
+            key=lambda i: i.get('height') or 0,
+            reverse=True
+        )), None)
+
+        show = {
+            'id': data.get('id'),
+            'name': data.get('name'),
+            'cover': image.get('url') if image else None,
+            'tracks': data.get('total_episodes')
+        }
+
+        self.set_cache(f'show:{show_id}', show)
+
+        return show
+
+    def get_show_episodes(self, show_id, from_cache=True):
+        if type(show_id) != str or len(show_id) < 1:
+            raise SpotifyException('Invalid show id')
+
+        if from_cache:
+            episodes_or_exc = self.get_cache(f'show:{show_id}:episodes')
+
+            if episodes_or_exc:
+                if type(episodes_or_exc) == SpotifyException:
+                    raise episodes_or_exc
+
+                for episode in episodes_or_exc:
+                    yield episode
+
+                return
+
+            show_or_exc = self.get_cache(f'show:{show_id}')
+            if show_or_exc and type(show_or_exc) == SpotifyException:
+                raise show_or_exc
+
+        show = self.get_show(show_id, from_cache)
+        episodes = []
+        next_url = f'/shows/{show_id}/episodes?offset=0&limit=50'
+
+        if from_cache:
+            saved_chunk = self.get_cache(f'show:{show_id}:episodes_chunk')
+            if saved_chunk:
+                episodes = saved_chunk.get('episodes')
+                next_url = saved_chunk.get('next_url')
+
+                for episode in episodes:
+                    yield episode
+
+        while next_url is not None:
+            with self.get_api_session() as session:
+                req = session.get(next_url)
+
+            if req.status_code != httpx.codes.OK:
+                raise SpotifyException('Unable to fetch show episodes')
+
+            data = req.json()
+            next_url = None
+
+            if data.get('next'):
+                parsed_next_url = parse_qs(urlparse(data.get('next')).query)
+                next_url = f'/shows/{show_id}' \
+                           f'/tracks' \
+                           f'?offset={parsed_next_url.get("offset")[0]}' \
+                           f'&limit={parsed_next_url.get("limit")[0]}'
+
+            episodes_parsed = []
+
+            for item in data.get('items'):
+                if next(filter(
+                    lambda e: e.get('id') == item.get('id'),
+                    episodes
+                ), None):
+                    continue
+
+                if not item.get('is_playable', True):
+                    continue
+
+                episode = {
+                    'id': item.get('id'),
+                    'name': item.get('name'),
+                    'show': show
+                }
+
+                self.set_cache(f'episode:{episode.get("id")}', episode)
+                episodes.append(episode)
+                episodes_parsed.append(episode)
+
+            self.set_cache(f'show:{show_id}:episodes_chunk', {
+                'episodes': episodes,
+                'next_url': next_url
+            })
+
+            for episode_parsed in episodes_parsed:
+                yield episode_parsed
 
             if next_url:
                 time.sleep(2)
