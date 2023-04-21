@@ -2,12 +2,14 @@ import hashlib
 import os.path
 import re
 import time
+from contextlib import contextmanager
 from urllib.parse import urlparse
 from urllib.parse import parse_qs
 
 import httpx
-from librespot.audio.decoders import AudioQuality
+from librespot.audio.decoders import AudioQuality, VorbisOnlyAudioQuality
 from librespot.core import Session
+from librespot.metadata import EpisodeId, TrackId
 
 from spoffline.cacher import Cacher
 from spoffline.configuration import config
@@ -90,6 +92,7 @@ class Spotify:
 
         return user_data
 
+    @property
     def user_quality(self):
         return AudioQuality.VERY_HIGH if self.user_data.get('product') == 'premium' else AudioQuality.HIGH
 
@@ -212,20 +215,27 @@ class Spotify:
             reverse=True
         )), None)
 
-        track = {
-            'id': data.get('id'),
-            'name': data.get('name'),
-            'album': {
+        album = {
                 'id': data.get('album').get('id'),
                 'name': data.get('album').get('name'),
                 'cover': image.get('url') if image else None,
                 'tracks': data.get('album').get('total_tracks')
-            },
-            'number': data.get('track_number') or 1,
-            'artists': [{
+            }
+        artists = [{
                 'id': a.get('id'),
                 'name': a.get('name')
             } for a in data.get('artists')]
+
+        for a in artists:
+            self.set_cache(f'artist:{a.get("id")}', a)
+        self.set_cache(f'album:{album.get("id")}', album)
+
+        track = {
+            'id': data.get('id'),
+            'name': data.get('name'),
+            'album': album,
+            'number': data.get('track_number') or 1,
+            'artists': artists
         }
 
         self.set_cache(f'track:{track_id}', track)
@@ -367,6 +377,8 @@ class Spotify:
             if next_url:
                 time.sleep(2)
 
+        self.set_cache(f'album:{album_id}:tracks', tracks)
+
     def get_artist(self, artist_id, from_cache=True):
         if type(artist_id) != str or len(artist_id) < 1:
             raise SpotifyException('Invalid artist id')
@@ -414,7 +426,7 @@ class Spotify:
             raise SpotifyException('Invalid artist id')
 
         if from_cache:
-            artist_albums_or_exc = self.get_cache(f'artist:{artist_id}')
+            artist_albums_or_exc = self.get_cache(f'artist:{artist_id}:albums')
 
             if artist_albums_or_exc:
                 if type(artist_albums_or_exc) == SpotifyException:
@@ -491,6 +503,8 @@ class Spotify:
             if next_url:
                 time.sleep(2)
 
+        self.set_cache(f'artist:{artist_id}:albums', albums)
+
     def get_episode(self, episode_id, from_cache=True):
         if type(episode_id) != str or len(episode_id) < 1:
             raise SpotifyException('Invalid episode id')
@@ -533,15 +547,19 @@ class Spotify:
             reverse=True
         )), None)
 
-        episode = {
-            'id': data.get('id'),
-            'name': data.get('name'),
-            'show': {
+        show = {
                 'id': data.get('show').get('id'),
                 'name': data.get('show').get('name'),
                 'cover': image.get('url') if image else None,
                 'episodes': data.get('show').get('total_episodes')
             }
+
+        self.set_cache(f'show:{show.get("id")}', show)
+
+        episode = {
+            'id': data.get('id'),
+            'name': data.get('name'),
+            'show': show
         }
 
         self.set_cache(f'episode:{episode_id}', episode)
@@ -645,7 +663,7 @@ class Spotify:
             if data.get('next'):
                 parsed_next_url = parse_qs(urlparse(data.get('next')).query)
                 next_url = f'/shows/{show_id}' \
-                           f'/tracks' \
+                           f'/episodes' \
                            f'?offset={parsed_next_url.get("offset")[0]}' \
                            f'&limit={parsed_next_url.get("limit")[0]}'
 
@@ -681,3 +699,218 @@ class Spotify:
 
             if next_url:
                 time.sleep(2)
+
+        self.set_cache(f'show:{show_id}:episodes', episodes)
+
+    def get_playlist(self, playlist_id, from_cache=True, with_account=False):
+        if type(playlist_id) != str or len(playlist_id) < 1:
+            raise SpotifyException('Invalid playlist id')
+
+        if from_cache:
+            playlist_or_exc = self.get_cache(f'playlist:{playlist_id}:{self.md5credentials}')
+
+            if playlist_or_exc:
+                if type(playlist_or_exc) == SpotifyException:
+                    raise playlist_or_exc
+                return playlist_or_exc
+
+        with self.get_api_session(with_account) as session:
+            req = session.get(f'/playlists/{playlist_id}')
+
+        if req.status_code != httpx.codes.OK:
+            exc = SpotifyException(
+                'Playlist not found' if req.status_code in [
+                    httpx.codes.BAD_REQUEST,
+                    httpx.codes.NOT_FOUND
+                ] else 'Unable to fetch playlist'
+            )
+
+            if req.status_code in [
+                httpx.codes.BAD_REQUEST,
+                httpx.codes.NOT_FOUND
+            ]:
+                self.set_cache(f'playlist:{playlist_id}:{self.md5credentials}', exc)
+                self.set_cache(f'playlist:{playlist_id}:{self.md5credentials}:items', exc)
+
+            raise exc
+
+        data = req.json()
+
+        image = next(iter(sorted(
+            data.get('images'),
+            key=lambda i: i.get('height') or 0,
+            reverse=True
+        )), None)
+
+        playlist = {
+            'id': data.get('id'),
+            'name': data.get('name'),
+            'cover': image.get('url') if image else None,
+            'tracks': data.get('tracks').get('total')
+        }
+
+        self.set_cache(f'playlist:{playlist_id}:{self.md5credentials}', playlist)
+
+        return playlist
+
+    def get_playlist_items(self, playlist_id, from_cache=True, with_account=False):
+        if type(playlist_id) != str or len(playlist_id) < 1:
+            raise SpotifyException('Invalid playlist id')
+
+        if from_cache:
+            items_or_exc = self.get_cache(f'playlist:{playlist_id}:{self.md5credentials}:items')
+
+            if items_or_exc:
+                if type(items_or_exc) == SpotifyException:
+                    raise items_or_exc
+
+                for item in items_or_exc:
+                    yield item
+
+                return
+
+            playlist_or_exc = self.get_cache(f'playlist:{playlist_id}:{self.md5credentials}')
+            if playlist_or_exc and type(playlist_or_exc) == SpotifyException:
+                raise playlist_or_exc
+
+        items = []
+        next_url = f'/playlists/{playlist_id}/tracks?offset=0&limit=50'
+
+        if from_cache:
+            saved_chunk = self.get_cache(f'playlist:{playlist_id}:{self.md5credentials}:items_chunk')
+            if saved_chunk:
+                items = saved_chunk.get('items')
+                next_url = saved_chunk.get('next_url')
+
+                for item in items:
+                    yield item
+
+        while next_url is not None:
+            with self.get_api_session(with_account) as session:
+                req = session.get(next_url)
+
+            if req.status_code != httpx.codes.OK:
+                raise SpotifyException('Unable to fetch playlist items')
+
+            data = req.json()
+            next_url = None
+
+            if data.get('next'):
+                parsed_next_url = parse_qs(urlparse(data.get('next')).query)
+                next_url = f'/playlists/{playlist_id}' \
+                           f'/tracks' \
+                           f'?offset={parsed_next_url.get("offset")[0]}' \
+                           f'&limit={parsed_next_url.get("limit")[0]}'
+
+            items_parsed = []
+
+            for item in data.get('items'):
+                if item.get('is_local', False):
+                    continue
+
+                item = item.get('track')
+
+                if next(filter(
+                    lambda e: e.get('id') == item.get('id') and e.get('type') == item.get('type'),
+                    items
+                ), None):
+                    continue
+
+                if not item.get('is_playable', True):
+                    continue
+
+                image = next(iter(sorted(
+                    item.get(
+                        'show' if item.get('type') == 'episode' else 'album'
+                    ).get('images'),
+                    key=lambda i: i.get('height') or 0,
+                    reverse=True
+                )), None)
+
+                if item.get('type') == 'episode':
+                    show = {
+                        'id': data.get('id'),
+                        'name': item.get('show').get('name'),
+                        'cover': image.get('url') if image else None,
+                        'episodes': item.get('show').get('total_episodes')
+                    }
+                    iitem = {
+                        'id': item.get('id'),
+                        'name': item.get('name'),
+                        'show': show
+                    }
+
+                    self.set_cache(f'episode:{iitem.get("id")}', iitem)
+                    self.set_cache(f'show:{show.get("id")}', show)
+                elif item.get('type') == 'track':
+                    album = {
+                        'id': item.get('album').get('id'),
+                        'name': item.get('album').get('name'),
+                        'cover': image.get('url') if image else None,
+                        'tracks': item.get('album').get('total_tracks')
+                    }
+                    artists = [{
+                        'id': a.get('id'),
+                        'name': a.get('name')
+                    } for a in item.get('artists')]
+
+                    for a in artists:
+                        self.set_cache(f'artist:{a.get("id")}', a)
+
+                    iitem = {
+                        'id': item.get('id'),
+                        'name': item.get('name'),
+                        'album': album,
+                        'number': item.get('track_number') or 1,
+                        'artists': artists
+                    }
+
+                    self.set_cache(f'track:{iitem.get("id")}', iitem)
+                    self.set_cache(f'album:{album.get("id")}', album)
+                else:
+                    continue
+
+                iitem = {**iitem, 'type': item.get('type')}
+                items.append(iitem)
+                items_parsed.append(iitem)
+
+            self.set_cache(f'playlist:{playlist_id}:{self.md5credentials}:items_chunk', {
+                'items': items,
+                'next_url': next_url
+            })
+
+            for item_parsed in items_parsed:
+                yield item_parsed
+
+            if next_url:
+                time.sleep(2)
+
+        self.set_cache(f'playlist:{playlist_id}:{self.md5credentials}:items', items)
+
+    @staticmethod
+    def get_playable_id(item_id, item_type):
+        if item_type == 'track':
+            instance = TrackId
+        elif item_type == 'episode':
+            instance = EpisodeId
+        else:
+            raise SpotifyException('Not supported item type')
+
+        return instance.from_uri(f'spotify:{item_type}:{item_id}')
+
+    @contextmanager
+    def get_stream(self, playable_id):
+        try:
+            stream = self.get_user_session().content_feeder().load(
+                playable_id,
+                VorbisOnlyAudioQuality(self.user_quality),
+                False,
+                None
+            ).input_stream.stream()
+        except RuntimeError:
+            raise SpotifyException('Unable to fetch item stream')
+
+        try:
+            yield stream
+        finally:
+            stream.close()
