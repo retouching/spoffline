@@ -48,11 +48,49 @@ class Spotify:
             'credentials.json'
         )
 
-    def set_cache(self, key, data):
-        return self.cache.set(key, data, Spotify.KEEP_IN_CACHE)
+    def set_cache(self, key, data, by_country=True):
+        country = ''
+
+        if by_country:
+            country += f':{self.user_data.get("country")}'
+
+        return self.cache.set(
+            f'{key}{country}',
+            data,
+            Spotify.KEEP_IN_CACHE
+        )
+
+    def get_cache(self, key, by_country=True):
+        country = ''
+
+        if by_country:
+            country += f':{self.user_data.get("country")}'
+
+        return self.cache.get(f'{key}{country}')
+
+    @property
+    def user_data(self):
+        user_data = self.get_cache(f'user:{self.md5credentials}', False)
+
+        if not user_data:
+            with httpx.Client(
+                base_url=Spotify.BASE_URL,
+                headers={
+                    'Authorization': f'Bearer {self.get_user_api_token()}'
+                }
+            ) as client:
+                req = client.get('/me')
+
+                if req.status_code != httpx.codes.OK:
+                    raise SpotifyException('Unable to fetch current user')
+
+                user_data = req.json()
+                self.set_cache(f'user:{self.md5credentials}', user_data, False)
+
+        return user_data
 
     def get_global_api_token(self):
-        token = self.cache.get('api:token:global')
+        token = self.get_cache('api:token:global')
         if token:
             return token
 
@@ -69,7 +107,7 @@ class Spotify:
         if req.status_code != httpx.codes.OK:
             raise SpotifyException('Unable to fetch token')
 
-        self.cache.set('api:token', req.json().get('access_token'), req.json().get('expires_in') - 600)
+        self.set_cache('api:token', req.json().get('access_token'), req.json().get('expires_in') - 600)
 
         return req.json().get('access_token')
 
@@ -81,29 +119,13 @@ class Spotify:
         ).access_token
 
     def get_api_session(self, read_playlist=False):
-        session = httpx.Client(base_url=Spotify.BASE_URL)
-
-        user_data = self.cache.get(f'user:{self.md5credentials}')
-        if not user_data or read_playlist:
-            session.headers = {
-                'Authorization': f'Bearer {self.get_user_api_token()}'
+        session = httpx.Client(
+            base_url=Spotify.BASE_URL,
+            params={'market': self.user_data.get('country')},
+            headers={
+                'Authorization': f'Bearer {self.get_user_api_token() if read_playlist else self.get_global_api_token()}'
             }
-
-            if not user_data:
-                with httpx.Client(base_url=Spotify.BASE_URL, headers=session.headers) as client:
-                    req = client.get('/me')
-
-                if req.status_code != httpx.codes.OK:
-                    raise SpotifyException('Unable to fetch current user')
-
-                user_data = req.json()
-                self.set_cache(f'user:{self.md5credentials}', user_data)
-        else:
-            session.headers = {
-                'Authorization': f'Bearer {self.get_global_api_token()}'
-            }
-
-        session.params = {'market': user_data.get('country')}
+        )
 
         return session
 
@@ -112,7 +134,7 @@ class Spotify:
             return self._user_session
 
         if os.path.exists(self.credentials_cache_path):
-            last_credentials = self.cache.get('credentials:hash') or ''
+            last_credentials = self.get_cache('credentials:hash') or ''
 
             if last_credentials == self.md5credentials:
                 self._user_session = Session.Builder(Session.Configuration(
@@ -140,7 +162,7 @@ class Spotify:
             config.credentials.password
         ).create()
 
-        self.cache.set('credentials:hash', self.md5credentials)
+        self.set_cache('credentials:hash', self.md5credentials)
 
         return self._user_session
 
@@ -149,7 +171,7 @@ class Spotify:
             raise SpotifyException('Invalid track id')
 
         if from_cache:
-            track_or_exc = self.cache.get(f'track:{track_id}')
+            track_or_exc = self.get_cache(f'track:{track_id}')
 
             if track_or_exc:
                 if type(track_or_exc) == SpotifyException:
@@ -208,7 +230,7 @@ class Spotify:
             raise SpotifyException('Invalid album id')
 
         if from_cache:
-            album_or_exc = self.cache.get(f'album:{album_id}')
+            album_or_exc = self.get_cache(f'album:{album_id}')
 
             if album_or_exc:
                 if type(album_or_exc) == SpotifyException:
@@ -259,7 +281,7 @@ class Spotify:
             raise SpotifyException('Invalid album id')
 
         if from_cache:
-            tracks_or_exc = self.cache.get(f'album:{album_id}:tracks')
+            tracks_or_exc = self.get_cache(f'album:{album_id}:tracks')
 
             if tracks_or_exc:
                 if type(tracks_or_exc) == SpotifyException:
@@ -270,7 +292,7 @@ class Spotify:
 
                 return
 
-            album_or_exc = self.cache.get(f'album:{album_id}')
+            album_or_exc = self.get_cache(f'album:{album_id}')
             if album_or_exc and type(album_or_exc) == SpotifyException:
                 raise album_or_exc
 
@@ -279,7 +301,7 @@ class Spotify:
         next_url = f'/albums/{album_id}/tracks?offset=0&limit=50'
 
         if from_cache:
-            saved_chunk = self.cache.get(f'album:{album_id}:tracks_chunk')
+            saved_chunk = self.get_cache(f'album:{album_id}:tracks_chunk')
             if saved_chunk:
                 tracks = saved_chunk.get('tracks')
                 next_url = saved_chunk.get('next_url')
@@ -311,6 +333,9 @@ class Spotify:
                 ), None):
                     continue
 
+                if not item.get('is_playable', True):
+                    continue
+
                 track = {
                     'id': item.get('id'),
                     'name': item.get('name'),
@@ -340,7 +365,7 @@ class Spotify:
             raise SpotifyException('Invalid artist id')
 
         if from_cache:
-            artist_or_exc = self.cache.get(f'artist:{artist_id}')
+            artist_or_exc = self.get_cache(f'artist:{artist_id}')
 
             if artist_or_exc:
                 if type(artist_or_exc) == SpotifyException:
@@ -382,7 +407,7 @@ class Spotify:
             raise SpotifyException('Invalid artist id')
 
         if from_cache:
-            artist_albums_or_exc = self.cache.get(f'artist:{artist_id}')
+            artist_albums_or_exc = self.get_cache(f'artist:{artist_id}')
 
             if artist_albums_or_exc:
                 if type(artist_albums_or_exc) == SpotifyException:
@@ -393,7 +418,7 @@ class Spotify:
 
                 return
 
-            artist_or_exc = self.cache.get(f'album:{artist_id}')
+            artist_or_exc = self.get_cache(f'album:{artist_id}')
             if artist_or_exc and type(artist_or_exc) == SpotifyException:
                 raise artist_or_exc
 
@@ -401,7 +426,7 @@ class Spotify:
         next_url = f'/artists/{artist_id}/albums?offset=0&limit=50'
 
         if from_cache:
-            saved_chunk = self.cache.get(f'artist:{artist_id}:albums_chunk')
+            saved_chunk = self.get_cache(f'artist:{artist_id}:albums_chunk')
             if saved_chunk:
                 albums = saved_chunk.get('albums')
                 next_url = saved_chunk.get('next_url')
