@@ -18,7 +18,7 @@ class Spotify:
     BASE_URL = 'https://api.spotify.com/v1/'
 
     def __init__(self):
-        self.cache = Cacher('spotify.api')
+        self.cache = Cacher('spotify.data')
         self._user_session = None
         os.makedirs(os.path.dirname(self.credentials_cache_path), exist_ok=True)
 
@@ -90,7 +90,7 @@ class Spotify:
         return user_data
 
     def get_global_api_token(self):
-        token = self.get_cache('api:token:global')
+        token = self.get_cache('api:token', False)
         if token:
             return token
 
@@ -107,7 +107,7 @@ class Spotify:
         if req.status_code != httpx.codes.OK:
             raise SpotifyException('Unable to fetch token')
 
-        self.set_cache('api:token', req.json().get('access_token'), req.json().get('expires_in') - 600)
+        self.cache.set('api:token', req.json().get('access_token'), req.json().get('expires_in') - 600)
 
         return req.json().get('access_token')
 
@@ -134,7 +134,7 @@ class Spotify:
             return self._user_session
 
         if os.path.exists(self.credentials_cache_path):
-            last_credentials = self.get_cache('credentials:hash') or ''
+            last_credentials = self.get_cache('credentials:hash', False) or ''
 
             if last_credentials == self.md5credentials:
                 self._user_session = Session.Builder(Session.Configuration(
@@ -162,7 +162,7 @@ class Spotify:
             config.credentials.password
         ).create()
 
-        self.set_cache('credentials:hash', self.md5credentials)
+        self.set_cache('credentials:hash', self.md5credentials, False)
 
         return self._user_session
 
@@ -198,6 +198,9 @@ class Spotify:
             raise exc
 
         data = req.json()
+
+        if not data.get('is_playable', True):
+            raise SpotifyException('This track is not available in your country')
 
         image = next(iter(sorted(
             data.get('album').get('images'),
