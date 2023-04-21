@@ -31,10 +31,13 @@ def cli(url):
 
     if parsed_url.get('track_id'):
         download_track(parsed_url.get('track_id'))
+    elif parsed_url.get('album_id'):
+        download_album(parsed_url.get('album_id'))
 
 
-def download_track(track_id):
+def download_track(track_id, subfolder_name=None):
     print('Fetching track informations ...')
+
     try:
         track = client.get_track(track_id)
     except SpotifyException as e:
@@ -80,7 +83,8 @@ def download_track(track_id):
         name=track.get('name'),
         artists=[a.get('name') for a in track.get('artists')],
         cover_url=track.get('album').get('cover'),
-        track_no=track.get('number')
+        track_no=track.get('number'),
+        album=track.get('album').get('name')
     )
 
     print('Cleaning files ...')
@@ -88,12 +92,36 @@ def download_track(track_id):
     trackname_clean = re.sub(r' +', ' ', re.sub(r'[/\\:@?<>"]+', ' ', track.get('name')))
     author_clean = re.sub(r' +', ' ', re.sub(r'[/\\:@?<>"]+', ' ', next(iter(track.get("artists"))).get("name")))
 
-    final_file = os.path.join(
-        config.paths.downloads,
-        f'{trackname_clean} - {author_clean}.mp3'
-    )
+    subfolder_clean = None
+    if subfolder_name:
+        subfolder_clean = re.sub(r' +', ' ', re.sub(r'[/\\:@?<>"]+', ' ', subfolder_name))
+
+    final_filename = f'{trackname_clean} - {author_clean}.mp3'
+
+    final_file = os.path.join(*[
+        f for f in [config.paths.downloads, subfolder_clean, final_filename] if f is not None
+    ])
+
+    if not os.path.exists(os.path.dirname(final_file)):
+        os.makedirs(os.path.dirname(final_file), exist_ok=True)
 
     os.rename(temp_mp3_file, final_file)
     os.unlink(temp_file)
 
     print(f'Successfully downloaded {track.get("name")} by {next(iter(track.get("artists"))).get("name")}')
+
+
+def download_album(album_id):
+    print('Fetching album informations ...')
+
+    try:
+        album = client.get_album(album_id)
+    except SpotifyException as e:
+        return print(f'Error: {e}')
+
+    print(f'Starting download of {album.get("name")}')
+
+    for track in client.get_album_tracks(album.get('id')):
+        download_track(track.get('id'), album.get('name'))
+
+    print(f'Successfully downloaded {album.get("name")}')

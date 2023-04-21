@@ -353,15 +353,20 @@ class Spotify:
                 if not item.get('is_playable', True):
                     continue
 
+                artists = [{
+                    'id': a.get('id'),
+                    'name': a.get('name')
+                } for a in item.get('artists')]
+
+                for a in artists:
+                    self.set_cache(f'artist:{a.get("id")}', a)
+
                 track = {
                     'id': item.get('id'),
                     'name': item.get('name'),
                     'album': album,
                     'number': item.get('track_number') or 1,
-                    'artists': [{
-                        'id': a.get('id'),
-                        'name': a.get('name')
-                    } for a in item.get('artists')]
+                    'artists': artists
                 }
 
                 self.set_cache(f'track:{track.get("id")}', track)
