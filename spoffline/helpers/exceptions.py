@@ -1,7 +1,3 @@
-class ParserException(Exception):
-    pass
-
-
 class HolaProxyException(Exception):
     pass
 

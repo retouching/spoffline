@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, constr
 
 
 class CredentialsConfiguration(BaseModel):
@@ -7,3 +7,4 @@ class CredentialsConfiguration(BaseModel):
     email: str
     password: str
     is_premium: bool
+    market: constr(regex=r'^[A-Z]{2}$') | None = None

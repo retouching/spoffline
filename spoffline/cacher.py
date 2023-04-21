@@ -10,6 +10,7 @@ from spoffline.configuration import config
 class Cacher:
     def __init__(self, name):
         self.name = name
+        self.data = None
 
         if not re.match(r'^[0-9A-Za-z-_.]+$', name):
             raise ValueError('Invalid cacher name')
@@ -18,6 +19,10 @@ class Cacher:
             os.makedirs(os.path.dirname(self.path), exist_ok=True)
             with open(self.path, 'w+') as f:
                 f.write('{}')
+            self.data = {}
+        else:
+            with open(self.path, 'r') as f:
+                self.data = json.load(f)
 
     @property
     def path(self):
@@ -29,24 +34,31 @@ class Cacher:
 
         return os.path.join(*final_path)
 
-    def get(self, key=None):
-        with open(self.path, 'r') as f:
-            data = json.load(f)
-        if not key:
-            return data
-        if not data.get(key):
+    def get(self, key):
+        if not self.data.get(key):
             return None
-        if data.get(key).get('timeout') and data.get(key).get('timeout') < time.time():
+        if self.data.get(key).get('timeout') and self.data.get(key).get('timeout') < time.time():
             return None
-        return pickle.loads(bytes.fromhex(data.get(key).get('data')))
+        return pickle.loads(bytes.fromhex(self.data.get(key).get('data')))
 
     def set(self, key, data, timeout=None):
-        data = {
-            **self.get(),
+        self.data = {
+            **self.data,
             key: {
                 'data': pickle.dumps(data).hex(),
                 'timeout': int(time.time()) + timeout if timeout else None
             }
         }
+
         with open(self.path, 'w') as f:
-            json.dump(data, f, indent=4)
+            json.dump(self.data, f, indent=4)
+
+    def values(self, prefix=None):
+        for key in self.data:
+            if prefix and not key.startswith(prefix):
+                continue
+
+            if self.data.get(key).get('timeout') and self.data.get(key).get('timeout') < time.time():
+                continue
+
+            yield self.data.get(key)
