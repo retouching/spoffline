@@ -2,8 +2,6 @@
 <h1>Spoffline - Next gen spotify downloader</h1>
 </center>
 
----
-
 <h2>Requirements</h2>
 
 - **Python** (up to 3.10)
