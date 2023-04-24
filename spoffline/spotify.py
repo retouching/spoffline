@@ -341,8 +341,8 @@ class Spotify:
                 parsed_next_url = parse_qs(urlparse(data.get('next')).query)
                 next_url = f'/albums/{album_id}' \
                            f'/tracks' \
-                           f'?offset={parsed_next_url.get("offset")[0]}' \
-                           f'&limit={parsed_next_url.get("limit")[0]}'
+                           f'?offset={parsed_next_url.get(b"offset")[0]}' \
+                           f'&limit={parsed_next_url.get(b"limit")[0]}'
 
             for item in data.get('items'):
                 if next(filter(
@@ -474,8 +474,8 @@ class Spotify:
                 parsed_next_url = parse_qs(urlparse(data.get('next')).query)
                 next_url = f'/artists/{artist_id}' \
                            f'/albums' \
-                           f'?offset={parsed_next_url.get("offset")[0]}' \
-                           f'&limit={parsed_next_url.get("limit")[0]}'
+                           f'?offset={parsed_next_url.get(b"offset")[0]}' \
+                           f'&limit={parsed_next_url.get(b"limit")[0]}'
 
             for item in data.get('items'):
                 if next(filter(
@@ -671,8 +671,8 @@ class Spotify:
                 parsed_next_url = parse_qs(urlparse(data.get('next')).query)
                 next_url = f'/shows/{show_id}' \
                            f'/episodes' \
-                           f'?offset={parsed_next_url.get("offset")[0]}' \
-                           f'&limit={parsed_next_url.get("limit")[0]}'
+                           f'?offset={parsed_next_url.get(b"offset")[0]}' \
+                           f'&limit={parsed_next_url.get(b"limit")[0]}'
 
             episodes_parsed = []
 
@@ -806,8 +806,8 @@ class Spotify:
                 parsed_next_url = parse_qs(urlparse(data.get('next')).query)
                 next_url = f'/playlists/{playlist_id}' \
                            f'/tracks' \
-                           f'?offset={parsed_next_url.get("offset")[0]}' \
-                           f'&limit={parsed_next_url.get("limit")[0]}'
+                           f'?offset={parsed_next_url.get(b"offset")[0]}' \
+                           f'&limit={parsed_next_url.get(b"limit")[0]}'
 
             items_parsed = []
 
