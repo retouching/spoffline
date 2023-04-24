@@ -25,6 +25,9 @@ class Spotify:
         self._user_session = None
         os.makedirs(os.path.dirname(self.credentials_cache_path), exist_ok=True)
 
+        # Init user session
+        self.get_user_session()
+
     @staticmethod
     def parse_url(url):
         match = re.match(
@@ -35,7 +38,7 @@ class Spotify:
         if not match:
             raise SpotifyException('Invalid URL provided')
 
-        return {f'{match.group(1)}_id': match.group(2)}
+        return match.group(2), match.group(1)
 
     @property
     def md5credentials(self):

@@ -6,4 +6,4 @@ httpx
 PyYAML
 iso3166
 pproxy
-tqdm
+rich

@@ -5,7 +5,7 @@ import random
 import subprocess
 
 import httpx
-from mutagen.id3 import APIC, ID3, TALB, TEN, TPE1, TPOS, TRCK, TT2
+from mutagen.id3 import APIC, TALB, TEN, TPE1, TPOS, TRCK, TT2
 from mutagen.mp3 import MP3
 
 from spoffline.configuration import config
