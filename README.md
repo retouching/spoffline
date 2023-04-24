@@ -1,6 +1,8 @@
-<center>
-<h1>Spoffline - Next gen spotify downloader</h1>
-</center>
+<div>
+    <h1 align="center">Spoffline<br>Next gen spotify downloader</h1>
+</div>
+
+<br>
 
 <h2>Requirements</h2>
 
