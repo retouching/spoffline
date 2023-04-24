@@ -235,7 +235,8 @@ class Spotify:
             'name': data.get('name'),
             'album': album,
             'number': data.get('track_number') or 1,
-            'artists': artists
+            'artists': artists,
+            'disc': data.get('disc_number') or 1
         }
 
         self.set_cache(f'track:{track_id}', track)
@@ -366,7 +367,8 @@ class Spotify:
                     'name': item.get('name'),
                     'album': album,
                     'number': item.get('track_number') or 1,
-                    'artists': artists
+                    'artists': artists,
+                    'disc': item.get('disc_number') or 1
                 }
 
                 self.set_cache(f'track:{track.get("id")}', track)
@@ -867,7 +869,8 @@ class Spotify:
                         'name': item.get('name'),
                         'album': album,
                         'number': item.get('track_number') or 1,
-                        'artists': artists
+                        'artists': artists,
+                        'disc': item.get('disc_number') or 1
                     }
 
                     self.set_cache(f'track:{iitem.get("id")}', iitem)

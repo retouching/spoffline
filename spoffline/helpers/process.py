@@ -5,7 +5,7 @@ import random
 import subprocess
 
 import httpx
-from mutagen.id3 import APIC, TALB, TEN, TPE1, TRCK, TT2
+from mutagen.id3 import APIC, ID3, TALB, TEN, TPE1, TPOS, TRCK, TT2
 from mutagen.mp3 import MP3
 
 from spoffline.configuration import config
@@ -37,7 +37,7 @@ def convert_to_mp3(filename, output, is_premium=False):
     os.rename(temp_file, output)
 
 
-def apply_mp3_metadata(filename, *, name=None, artists=None, album=None, cover_url=None, track_no=None):
+def apply_mp3_metadata(filename, *, name=None, artists=None, album=None, cover_url=None, track_no=None, disc_no=None):
     mimetype, _ = mimetypes.guess_type(filename)
 
     if mimetype != 'audio/mpeg':
@@ -51,6 +51,9 @@ def apply_mp3_metadata(filename, *, name=None, artists=None, album=None, cover_u
         handler.add_tags()
 
     handler.tags['TEN'] = TEN(encoding=3, text='spoffline v1.0.0')
+
+    if disc_no:
+        handler.tags['TPOS'] = TPOS(encoding=3, text=str(disc_no))
 
     if track_no:
         handler.tags['TRCK'] = TRCK(encoding=3, text=str(track_no))
