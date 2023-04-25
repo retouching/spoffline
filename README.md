@@ -40,3 +40,12 @@ $ python -m spoffline dl [URL]
 
 <img src="./.github/assets/album.gif">
 <img src="./.github/assets/proof.png">
+
+<h2>TODO List</h2>
+
+- [ ] Add support for episode
+- [ ] Add support for playlist
+- [ ] Add support for show
+- [ ] Add support for artist albums
+- [ ] Add support for e-book (available only in some country)
+- [ ] Add api support (to embed it in other projects)
