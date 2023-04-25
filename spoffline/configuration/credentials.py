@@ -1,4 +1,4 @@
-from pydantic import BaseModel, constr
+from pydantic import BaseModel
 
 
 class CredentialsConfiguration(BaseModel):

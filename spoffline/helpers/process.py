@@ -91,7 +91,7 @@ def apply_mp3_metadata(filename, *, name=None, artists=None, album=None, cover_u
         with open(album_art_path, 'rb') as f:
             handler.tags['APIC'] = APIC(
                 encoding=0,
-                mime=f'image/jpg',
+                mime='image/jpg',
                 type=3,
                 desc=u'Cover',
                 data=f.read()

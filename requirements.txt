@@ -4,3 +4,5 @@ mutagen
 httpx
 PyYAML
 rich
+ruff
+pydantic
