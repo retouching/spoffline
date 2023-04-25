@@ -12,7 +12,6 @@ from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn, T
 from spoffline.configuration import config
 from spoffline.console import console
 from spoffline.helpers import process
-from spoffline.helpers.binaries import Binaries, BinaryException
 from spoffline.helpers.exceptions import FFMPEGException, SpotifyException
 from spoffline.spotify import Spotify
 
@@ -22,11 +21,6 @@ from spoffline.spotify import Spotify
 @click.pass_context
 def cli(ctx, url):
     """Download content from Spotify"""
-
-    try:
-        Binaries.check_binaries()
-    except BinaryException:
-        return console.error('Error: Some binaries missing')
 
     try:
         url_id, url_type = Spotify.parse_url(url)
