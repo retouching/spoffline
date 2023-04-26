@@ -1,6 +1,5 @@
 import time
 from urllib.parse import parse_qs, urlparse
-from rich import print as pprint
 
 import httpx
 
@@ -64,7 +63,7 @@ class Artists(Manager):
                 raise artist_or_exc
 
         albums = []
-        next_url = f'/artists/{artist_id}/albums?offset=0&limit=50'
+        next_url = f'/artists/{artist_id}/albums?offset=0&limit=50&include_groups=album,single'
 
         if from_cache:
             saved_chunk = self.from_cache(f'{artist_id}:albums_chunk')
@@ -90,7 +89,8 @@ class Artists(Manager):
                 next_url = f'/artists/{artist_id}' \
                            f'/albums' \
                            f'?offset={parsed_next_url.get("offset")[0]}' \
-                           f'&limit={parsed_next_url.get("limit")[0]}'
+                           f'&limit={parsed_next_url.get("limit")[0]}' \
+                           f'&include_groups=album,single'
 
             for item in data.get('items'):
                 if next(filter(
