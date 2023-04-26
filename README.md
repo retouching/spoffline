@@ -21,13 +21,9 @@ You must config your account in the config.yml file:
 
 ```yaml
 credentials:
-    client_id: xxx
-    client_secret: xxx
     email: xxx@xxx.xxx
     password: xxx
 ```
-
-ClientId and ClientSecret can be created [here](https://developer.spotify.com/dashboard/create)
 
 <h2>Usage</h2>
 

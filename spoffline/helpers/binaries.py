@@ -17,9 +17,5 @@ class Binaries:
 
     @staticmethod
     def check_binaries():
-        for binary_name in [
-            # 'hola-proxy',
-            # We don't have to support proxies for now
-            'ffmpeg'
-        ]:
+        for binary_name in ['ffmpeg']:
             Binaries.get(binary_name)

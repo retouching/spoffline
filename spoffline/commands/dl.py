@@ -13,7 +13,7 @@ from spoffline.configuration import config
 from spoffline.console import console
 from spoffline.helpers import process
 from spoffline.helpers.exceptions import FFMPEGException, SpotifyException
-from spoffline.spotify import Spotify
+from spoffline.spotify.client import Client
 
 
 @click.command()
@@ -23,9 +23,11 @@ def cli(ctx, url):
     """Download content from Spotify"""
 
     try:
-        url_id, url_type = Spotify.parse_url(url)
+        url_id, url_type = Client.parse_url(url)
     except SpotifyException:
         return console.error('Error: Invalid URL provided')
+
+    ctx.client = Client()
 
     with console.status(
         '[white]Connect to account ...',
@@ -33,12 +35,12 @@ def cli(ctx, url):
         spinner='arc'
     ):
         try:
-            ctx.client = Spotify()
+            ctx.client.session.get_api_session()
         except Session.SpotifyAuthenticationException as e:
             return console.error(f'Error: Spotify return bad response ({e})')
 
     console.print(
-        f'Welcome back, [info]{ctx.client.user_data.get("display_name")}',
+        f'Welcome back, [info]{ctx.client.session.user.display_name}',
         style='white'
     )
 
@@ -59,24 +61,24 @@ def download_track(ctx, url_id, album_name=None):
         spinner='arc'
     ):
         try:
-            track = ctx.client.get_track(url_id)
+            track = ctx.client.tracks.get(url_id)
         except SpotifyException as e:
             time.sleep(1)
             return console.error(f'Error: {e}')
 
     console.print(
         f'Starting download of '
-        f'[info]{track.get("name")}[/info]'
+        f'[info]{track.name}[/info]'
         f' by '
-        f'[info]{"[/info], [info]".join([a.get("name") for a in track.get("artists")])}[/info]',
+        f'[info]{"[/info], [info]".join([a.name for a in track.artists])}[/info]',
         style='white'
     )
 
-    temp_file = os.path.join(config.paths.temp, f'{track.get("id")}.ogg')
+    temp_file = os.path.join(config.paths.temp, f'{track.id}.ogg')
     if os.path.exists(temp_file):
         os.unlink(temp_file)
 
-    with ctx.client.get_stream(Spotify.get_playable_id(url_id, 'track')) as stream:
+    with ctx.client.get_stream(track.playable_id) as stream:
         total_size = stream.size()
 
         with Progress(
@@ -101,7 +103,7 @@ def download_track(ctx, url_id, album_name=None):
         spinner_style='info',
         spinner='arc'
     ):
-        temp_mp3_file = os.path.join(config.paths.temp, f'{track.get("id")}.mp3')
+        temp_mp3_file = os.path.join(config.paths.temp, f'{track.id}.mp3')
         if os.path.exists(temp_mp3_file):
             os.unlink(temp_mp3_file)
 
@@ -109,7 +111,7 @@ def download_track(ctx, url_id, album_name=None):
             process.convert_to_mp3(
                 temp_file,
                 temp_mp3_file,
-                ctx.client.user_quality == AudioQuality.VERY_HIGH
+                ctx.client.session.user.audio_quality == AudioQuality.VERY_HIGH
             )
         except FFMPEGException:
             return console.error('Error: Unable to convert file')
@@ -122,11 +124,11 @@ def download_track(ctx, url_id, album_name=None):
         try:
             process.apply_mp3_metadata(
                 temp_mp3_file,
-                name=track.get('name'),
-                artists=[a.get('name') for a in track.get('artists')],
-                cover_url=track.get('album').get('cover'),
-                track_no=track.get('number'),
-                album=track.get('album').get('name')
+                name=track.name,
+                artists=[a.name for a in track.artists],
+                cover_url=track.album.cover,
+                track_no=track.number,
+                album=track.album.name
             )
         except (MutagenError, HTTPError):
             return console.error('Error: Unable to apply metadata to file')
@@ -140,15 +142,16 @@ def download_track(ctx, url_id, album_name=None):
             return re.sub(r' +', ' ', re.sub(r'[/\\:@?<>"]+', ' ', text))
 
         artist = 'Unknown'
-        if len(track.get("artists")) > 0:
-            artist = clean_string(track.get("artists")[0].get('name'))
+        if len(track.artists) > 0:
+            artist = clean_string(track.artists[0].name)
 
-        final_filename = f'{clean_string(track.get("name"))} - {artist}.mp3'
+        final_filename = f'{clean_string(track.name)} - {artist}.mp3'
 
         final_file = os.path.join(*[
             f for f in [
                 config.paths.downloads,
                 clean_string(album_name) if album_name else None,
+                f'Disk {track.disc}' if album_name else None,
                 final_filename
             ] if f is not None
         ])
@@ -164,9 +167,9 @@ def download_track(ctx, url_id, album_name=None):
 
     console.print(
         f'Successfully downloaded '
-        f'[info]{track.get("name")}[/info]'
+        f'[info]{track.name}[/info]'
         f' by '
-        f'[info]{"[/info], [info]".join([a.get("name") for a in track.get("artists")])}[/info]',
+        f'[info]{"[/info], [info]".join([a.name for a in track.artists])}[/info]',
         style='white'
     )
 
@@ -178,28 +181,28 @@ def download_album(ctx, album_id):
         spinner='arc'
     ):
         try:
-            album = ctx.client.get_album(album_id)
+            album = ctx.client.albums.get(album_id)
         except SpotifyException as e:
             time.sleep(1)
             return console.error(f'Error: {e}')
 
     console.print(
         f'Starting download of '
-        f'[info]{album.get("name")}',
+        f'[info]{album.name}',
         style='white'
     )
 
     console.rule()
 
-    for index, track in enumerate(ctx.client.get_album_tracks(album_id)):
-        download_track(ctx, track.get('id'), album.get('name'))
+    for index, track in enumerate(ctx.client.albums.get_tracks(album_id)):
+        download_track(ctx, track.id, album.name)
 
         console.rule(
-            f'[info]Download progress: {index+1}/{album.get("tracks")}'
+            f'[info]Download progress: {index+1}/{album.tracks}'
         )
 
     console.print(
         f'Successfully downloaded '
-        f'[info]{album.get("name")}',
+        f'[info]{album.name}',
         style='white'
     )
