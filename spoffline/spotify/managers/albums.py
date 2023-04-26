@@ -106,12 +106,16 @@ class Albums(Manager):
                 track = self.client.tracks.to_model(item, album)
                 tracks.append(track)
 
-                yield track
-
             self.set_cache(f'album:{album_id}:tracks_chunk', {
                 'tracks': tracks,
                 'next_url': next_url
             })
+
+            for track in filter(
+                lambda t: t.id in [tt.get('id') for tt in data.get('items')],
+                tracks
+            ):
+                yield track
 
             if next_url:
                 time.sleep(2)
