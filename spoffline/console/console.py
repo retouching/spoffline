@@ -13,3 +13,7 @@ class Console(_Console):
     def error(self, *args, **kwargs):
         self.print(*args, **kwargs, style='danger')
         exit(1)
+
+    def warn(self, *args, **kwargs):
+        self.print(*args, **kwargs, style='warn')
+        exit(1)
