@@ -41,9 +41,17 @@ class Shows(Manager):
         return self.to_model(req.json())
 
     def to_model(self, data):
+        image = next(iter(sorted(
+            data.get('images'),
+            key=lambda i: i.get('height') or 0,
+            reverse=True
+        )), None)
+
         show = Show(**{
             'id': data.get('id'),
-            'name': data.get('name')
+            'name': data.get('name'),
+            'cover': image.get('url') if image else None,
+            'episodes': data.get('total_episodes')
         })
 
         self.set_cache(data.get('id'), show)
