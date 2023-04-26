@@ -50,18 +50,21 @@ def cli(ctx, url):
     elif url_type == 'album':
         download_album(ctx, url_id)
 
+    elif url_type == 'episode':
+        download_episode(ctx, url_id)
+
     else:
         console.error(f'Error: {url_type}s not handled yet')
 
 
-def download_track(ctx, url_id, album_name=None):
+def download_track(ctx, track_id, *, album_name=None):
     with console.status(
         '[white]Fetching track data ...',
         spinner_style='info',
         spinner='arc'
     ):
         try:
-            track = ctx.client.tracks.get(url_id)
+            track = ctx.client.tracks.get(track_id)
         except SpotifyException as e:
             time.sleep(1)
             return console.error(f'Error: {e}')
@@ -195,7 +198,7 @@ def download_album(ctx, album_id):
     console.rule()
 
     for index, track in enumerate(ctx.client.albums.get_tracks(album_id)):
-        download_track(ctx, track.id, album.name)
+        download_track(ctx, track.id, album_name=album.name)
 
         console.rule(
             f'[info]Download progress: {index+1}/{album.tracks}'

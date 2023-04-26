@@ -1,4 +1,5 @@
 import httpx
+from rich import print as pprint
 
 from spoffline.helpers.exceptions import SpotifyException
 from spoffline.models.episode import Episode
@@ -37,13 +38,14 @@ class Episodes(Manager):
 
             raise exc
 
+        pprint(req.json())
         return self.to_model(req.json())
 
     def to_model(self, data, show=None):
         if not show:
             if not data.get('show'):
                 raise SpotifyException('No show provided')
-            show = self.client.albums.to_model(data.get('show'))
+            show = self.client.shows.to_model(data.get('show'))
 
         episode = Episode(**{
             'id': data.get('id'),

@@ -30,7 +30,7 @@ credentials:
 ```shell
 $ python -m spoffline dl [URL]
 ```
-*(Only track and album available for download for now)*
+*(Only music can be downloaded for now)*
 
 <h2>Example</h2>
 
@@ -39,9 +39,9 @@ $ python -m spoffline dl [URL]
 
 <h2>TODO List</h2>
 
-- [ ] Add support for episode
 - [ ] Add support for playlist
-- [ ] Add support for show
 - [ ] Add support for artist albums
-- [ ] Add support for e-book (available only in some country)
 - [ ] Add api support (to embed it in other projects)
+- [ ] ~~Add support for episode~~
+- [ ] ~~Add support for show~~
+- [ ] ~~Add support for e-book (available only in some country)~~
