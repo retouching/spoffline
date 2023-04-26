@@ -145,7 +145,7 @@ def download_track(ctx, track_id, *, album_name=None, playlist_name=None, artist
         spinner='arc'
     ):
         def clean_string(text):
-            return re.sub(r' +', ' ', re.sub(r'[/\\:@?<>"]+', ' ', text))
+            return re.sub(r' +', ' ', re.sub(r'[/\\:@?<>"*]+', ' ', text))
 
         artist = 'Unknown'
         if len(track.artists) > 0:
