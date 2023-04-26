@@ -50,14 +50,14 @@ def cli(ctx, url):
     elif url_type == 'album':
         download_album(ctx, url_id)
 
-    elif url_type == 'episode':
-        download_episode(ctx, url_id)
+    elif url_type == 'playlist':
+        download_playlist(ctx, url_id)
 
     else:
         console.error(f'Error: {url_type}s not handled yet')
 
 
-def download_track(ctx, track_id, *, album_name=None):
+def download_track(ctx, track_id, *, album_name=None, playlist_name=None):
     with console.status(
         '[white]Fetching track data ...',
         spinner_style='info',
@@ -148,22 +148,26 @@ def download_track(ctx, track_id, *, album_name=None):
         if len(track.artists) > 0:
             artist = clean_string(track.artists[0].name)
 
-        final_filename = f'{clean_string(track.name)} - {artist}.mp3'
+        final_filename = f'{clean_string(track.name)} - {artist}'
 
-        final_file = os.path.join(*[
+        final_file_dir = os.path.join(*[
             f for f in [
                 config.paths.downloads,
+                clean_string(playlist_name) if playlist_name else None,
                 clean_string(album_name) if album_name else None,
-                f'Disk {track.disc}' if album_name else None,
-                final_filename
+                f'Disk {track.disc}' if album_name else None
             ] if f is not None
         ])
 
-        if not os.path.exists(os.path.dirname(final_file)):
-            os.makedirs(os.path.dirname(final_file), exist_ok=True)
+        if not os.path.exists(final_file_dir):
+            os.makedirs(final_file_dir, exist_ok=True)
 
-        if os.path.exists(final_file):
-            os.unlink(final_file)
+        final_file = os.path.join(final_file_dir, f'{final_filename}.mp3')
+        final_file_inc = 0
+
+        while os.path.exists(final_file):
+            final_file_inc += 1
+            final_file = os.path.join(final_file_dir, f'{final_filename} ({final_file_inc}).mp3')
 
         os.rename(temp_mp3_file, final_file)
         os.unlink(temp_file)
@@ -201,11 +205,45 @@ def download_album(ctx, album_id):
         download_track(ctx, track.id, album_name=album.name)
 
         console.rule(
-            f'[info]Download progress: {index+1}/{album.tracks}'
+            f'[info]Download progress: {index+1}/{album.tracks} tracks'
         )
 
     console.print(
         f'Successfully downloaded '
         f'[info]{album.name}',
+        style='white'
+    )
+
+
+def download_playlist(ctx, playlist_id):
+    with console.status(
+        '[white]Fetching playlist data ...',
+        spinner_style='info',
+        spinner='arc'
+    ):
+        try:
+            playlist = ctx.client.playlists.get(playlist_id)
+        except SpotifyException as e:
+            time.sleep(1)
+            return console.error(f'Error: {e}')
+
+    console.print(
+        f'Starting download of '
+        f'[info]{playlist.name}',
+        style='white'
+    )
+
+    console.rule()
+
+    for index, track in enumerate(ctx.client.playlists.get_items(playlist_id)):
+        download_track(ctx, track.id, playlist_name=playlist.name)
+
+        console.rule(
+            f'[info]Download progress: {index+1}/{playlist.items} items'
+        )
+
+    console.print(
+        f'Successfully downloaded '
+        f'[info]{playlist.name}',
         style='white'
     )

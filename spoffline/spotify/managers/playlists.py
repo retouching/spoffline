@@ -44,7 +44,7 @@ class Playlists(Manager):
 
         return self.to_model(req.json())
 
-    def get_tracks(self, playlist_id, from_cache=True):
+    def get_items(self, playlist_id, from_cache=True):
         if type(playlist_id) != str or len(playlist_id) < 1:
             raise SpotifyException('Invalid playlist id')
 
@@ -99,12 +99,6 @@ class Playlists(Manager):
 
                 item = item.get('track')
 
-                if next(filter(
-                    lambda e: e.get('id') == item.get('id') and e.get('type') == item.get('type'),
-                    items
-                ), None):
-                    continue
-
                 if not item.get('is_playable', True):
                     continue
 
@@ -142,7 +136,7 @@ class Playlists(Manager):
             'id': data.get('id'),
             'name': data.get('name'),
             'cover': image.get('url') if image else None,
-            'tracks': data.get('tracks').get('total')
+            'items': data.get('tracks').get('total')
         })
 
         self.set_cache(f'{data.get("id")}:{self.client.session.credentials.hashed}', playlist)

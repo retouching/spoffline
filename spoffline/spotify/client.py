@@ -7,6 +7,7 @@ from spoffline.helpers.exceptions import SpotifyException
 from spoffline.spotify.managers.albums import Albums
 from spoffline.spotify.managers.artists import Artists
 from spoffline.spotify.managers.episodes import Episodes
+from spoffline.spotify.managers.playlists import Playlists
 from spoffline.spotify.managers.session import Session
 from spoffline.spotify.managers.shows import Shows
 from spoffline.spotify.managers.tracks import Tracks
@@ -18,8 +19,7 @@ class Client:
         self.tracks = Tracks(self)
         self.albums = Albums(self)
         self.artists = Artists(self)
-        self.shows = Shows(self)
-        self.episodes = Episodes(self)
+        self.playlists = Playlists(self)
 
     @staticmethod
     def parse_url(url):
