@@ -39,7 +39,7 @@ $ python -m spoffline dl [URL]
 
 <h2>TODO List</h2>
 
-- [ ] Add support for playlist
+- [x] Add support for playlist
 - [ ] Add support for artist albums
 - [ ] Add api support (to embed it in other projects)
 - [ ] ~~Add support for episode~~
