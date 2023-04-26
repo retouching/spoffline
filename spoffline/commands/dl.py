@@ -53,11 +53,14 @@ def cli(ctx, url):
     elif url_type == 'playlist':
         download_playlist(ctx, url_id)
 
+    elif url_type == 'artist':
+        download_discography(ctx, url_id)
+
     else:
         console.error(f'Error: {url_type}s not handled yet')
 
 
-def download_track(ctx, track_id, *, album_name=None, playlist_name=None):
+def download_track(ctx, track_id, *, album_name=None, playlist_name=None, artist_name=None):
     with console.status(
         '[white]Fetching track data ...',
         spinner_style='info',
@@ -154,6 +157,7 @@ def download_track(ctx, track_id, *, album_name=None, playlist_name=None):
             f for f in [
                 config.paths.downloads,
                 clean_string(playlist_name) if playlist_name else None,
+                clean_string(artist_name) if artist_name else None,
                 clean_string(album_name) if album_name else None,
                 f'Disk {track.disc}' if album_name else None
             ] if f is not None
@@ -181,7 +185,7 @@ def download_track(ctx, track_id, *, album_name=None, playlist_name=None):
     )
 
 
-def download_album(ctx, album_id):
+def download_album(ctx, album_id, *, artist_name=None):
     with console.status(
         '[white]Fetching album data ...',
         spinner_style='info',
@@ -202,7 +206,7 @@ def download_album(ctx, album_id):
     console.rule()
 
     for index, track in enumerate(ctx.client.albums.get_tracks(album_id)):
-        download_track(ctx, track.id, album_name=album.name)
+        download_track(ctx, track.id, album_name=album.name, artist_name=artist_name)
 
         console.rule(
             f'[info]Download progress: {index+1}/{album.tracks} tracks'
@@ -245,5 +249,33 @@ def download_playlist(ctx, playlist_id):
     console.print(
         f'Successfully downloaded '
         f'[info]{playlist.name}',
+        style='white'
+    )
+
+
+def download_discography(ctx, artist_id):
+    with console.status(
+        '[white]Fetching artist data ...',
+        spinner_style='info',
+        spinner='arc'
+    ):
+        try:
+            artist = ctx.client.artists.get(artist_id)
+        except SpotifyException as e:
+            time.sleep(1)
+            return console.error(f'Error: {e}')
+
+    console.print(
+        f'Starting download discography of '
+        f'[info]{artist.name}',
+        style='white'
+    )
+
+    for index, album in enumerate(ctx.client.artists.get_albums(artist_id)):
+        download_album(ctx, album.id, artist_name=artist.name)
+
+    console.print(
+        f'Successfully downloaded discography of '
+        f'[info]{artist.name}',
         style='white'
     )

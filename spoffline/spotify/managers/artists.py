@@ -93,7 +93,7 @@ class Artists(Manager):
 
             for item in data.get('items'):
                 if next(filter(
-                    lambda a: a.get('id') == item.get('id'),
+                    lambda a: a.id == item.get('id'),
                     albums
                 ), None):
                     continue

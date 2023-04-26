@@ -99,6 +99,12 @@ class Playlists(Manager):
 
                 item = item.get('track')
 
+                if next(filter(
+                    lambda i: i.id == item.get('id'),
+                    items
+                ), None):
+                    continue
+
                 if not item.get('is_playable', True):
                     continue
 
