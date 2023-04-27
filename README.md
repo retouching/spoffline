@@ -11,29 +11,32 @@
 
 <h2>Installation</h2>
 
-Install python requirements
-
 ```shell
-$ pip install -r requirements.txt
+$ pip install "git+https://github.com/retouching/spoffline.git"
 ```
 
+<h2>Usage</h2>
+
+<h3>1. CLI mode</h3>
 You must config your account:
 
 ```shell
 $ python -m spoffline auth [EMAIL] [PASSWORD]
 ```
 
-<h2>Usage</h2>
+Next you can download: *(premium have 320kbp/s sstreams and free only 160kbp/s)*
 
 ```shell
 $ python -m spoffline dl [URL]
 ```
-*(Only music can be downloaded for now)*
-
-<h2>Example</h2>
 
 <img src="./.github/assets/album.gif">
-<img src="./.github/assets/proof.png">
+
+*(Only music can be downloaded for now)*
+
+<h3>2. Module mode</h3>
+
+Examples can be found [here](./examples)
 
 <h2>Warning: Some things need to be considered</h2>
 

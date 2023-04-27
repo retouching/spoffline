@@ -5,7 +5,9 @@ dependencies = [
     "librespot",
     "mutagen",
     "httpx",
-    "pydantic"
+    "pydantic",
+    "PyYAML",
+    "rich"
 ]
 
 [tool.ruff]
