@@ -35,7 +35,7 @@ $ python -m spoffline dl [URL]
 <img src="./.github/assets/album.gif">
 <img src="./.github/assets/proof.png">
 
-<h2>Warning: Some things have to be concidered</h2>
+<h2>Warning: Some things need to be considered</h2>
 
  - This project is not approved by Spotify.
  - The worst that can happen is that you will be banned from Spotify
