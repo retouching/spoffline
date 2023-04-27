@@ -17,12 +17,10 @@ Install python requirements
 $ pip install -r requirements.txt
 ```
 
-You must config your account in the config.yml file:
+You must config your account:
 
-```yaml
-credentials:
-    email: xxx@xxx.xxx
-    password: xxx
+```shell
+$ python -m spoffline auth [EMAIL] [PASSWORD]
 ```
 
 <h2>Usage</h2>
@@ -41,7 +39,5 @@ $ python -m spoffline dl [URL]
 
 - [x] Add support for playlist
 - [x] Add support for artist albums
-- [ ] Add api support (to embed it in other projects)
-- [ ] ~~Add support for episode~~
-- [ ] ~~Add support for show~~
-- [ ] ~~Add support for e-book (available only in some country)~~
+- [x] Add api support (to embed it in other projects)
+- [ ] Add example usage of api
