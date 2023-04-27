@@ -3,7 +3,6 @@ import os
 import httpx
 from librespot.core import Session as LibrespotSession
 
-from spoffline.configuration import config
 from spoffline.constants import SPOTIFY_BASEURL
 from spoffline.helpers.exceptions import SpotifyException
 from spoffline.spotify.managers.manager import Manager
@@ -18,7 +17,7 @@ class Session(Manager):
 
     @property
     def credentials(self):
-        return Credentials(email=config.credentials.email, password=config.credentials.password)
+        return Credentials(email=self.client.email, password=self.client.password)
 
     @property
     def user(self):
@@ -48,7 +47,7 @@ class Session(Manager):
             return self._session
 
         credentials_path = os.path.join(
-            config.paths.cache,
+            self.client.cache_path,
             'spotify',
             'credentials.json'
         )
@@ -77,10 +76,7 @@ class Session(Manager):
             cache_dir=os.path.dirname(credentials_path),
             do_cache_clean_up=True,
             retry_on_chunk_error=True,
-        )).user_pass(
-            config.credentials.email,
-            config.credentials.password
-        ).create()
+        )).user_pass(self.credentials.email, self.credentials.password).create()
 
         self.set_cache('credentials', self.credentials, False)
 

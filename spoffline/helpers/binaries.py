@@ -1,7 +1,5 @@
 import shutil
 
-from spoffline.configuration import config
-
 
 class BinaryException(Exception):
     pass
@@ -10,7 +8,7 @@ class BinaryException(Exception):
 class Binaries:
     @staticmethod
     def get(binary_name):
-        binary = shutil.which(binary_name) or shutil.which(binary_name, path=config.paths.binaries)
+        binary = shutil.which(binary_name)
         if not binary:
             raise BinaryException(f'Unable to find {binary_name}')
         return binary

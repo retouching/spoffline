@@ -9,10 +9,11 @@ from librespot.core import Session
 from mutagen import MutagenError
 from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn, TimeRemainingColumn
 
-from spoffline.configuration import config
+from spoffline.configuration import Configuration
 from spoffline.console import console
 from spoffline.helpers import process
-from spoffline.helpers.exceptions import FFMPEGException, SpotifyException
+from spoffline.helpers.exceptions import ConfigurationException, FFMPEGException, SpotifyException
+from spoffline.helpers.paths import DefaultPaths
 from spoffline.spotify.client import Client
 
 
@@ -23,11 +24,19 @@ def cli(ctx, url):
     """Download content from Spotify"""
 
     try:
+        config = Configuration.load()
+    except ConfigurationException:
+        return console.error('Error: You must create configuration before downloading content')
+
+    try:
         url_id, url_type = Client.parse_url(url)
     except SpotifyException:
         return console.error('Error: Invalid URL provided')
 
-    ctx.client = Client()
+    ctx.client = Client(
+        config.email,
+        config.password
+    )
 
     with console.status(
         '[white]Connect to account ...',
@@ -80,7 +89,7 @@ def download_track(ctx, track_id, *, album_name=None, playlist_name=None, artist
         style='white'
     )
 
-    temp_file = os.path.join(config.paths.temp, f'{track.id}.ogg')
+    temp_file = os.path.join(DefaultPaths.get_temp_path(), f'{track.id}.ogg')
     if os.path.exists(temp_file):
         os.unlink(temp_file)
 
@@ -109,7 +118,7 @@ def download_track(ctx, track_id, *, album_name=None, playlist_name=None, artist
         spinner_style='info',
         spinner='arc'
     ):
-        temp_mp3_file = os.path.join(config.paths.temp, f'{track.id}.mp3')
+        temp_mp3_file = os.path.join(DefaultPaths.get_temp_path(), f'{track.id}.mp3')
         if os.path.exists(temp_mp3_file):
             os.unlink(temp_mp3_file)
 
@@ -155,7 +164,7 @@ def download_track(ctx, track_id, *, album_name=None, playlist_name=None, artist
 
         final_file_dir = os.path.join(*[
             f for f in [
-                config.paths.downloads,
+                DefaultPaths.get_download_path(),
                 clean_string(playlist_name) if playlist_name else None,
                 clean_string(artist_name) if artist_name else None,
                 clean_string(album_name) if album_name else None,

@@ -4,12 +4,11 @@ import pickle
 import re
 import time
 
-from spoffline.configuration import config
-
 
 class Cacher:
-    def __init__(self, name):
+    def __init__(self, name, cache_path):
         self.name = name
+        self.cache_path = cache_path
         self.data = None
 
         if not re.match(r'^[0-9A-Za-z-_.]+$', name):
@@ -26,7 +25,7 @@ class Cacher:
 
     @property
     def path(self):
-        final_path = [config.paths.cache]
+        final_path = [self.cache_path]
         name_splited = [n for n in self.name.split('.') if n and len(n) > 0]
 
         for index, n in enumerate(name_splited):

@@ -8,3 +8,7 @@ class SpotifyException(Exception):
 
 class FFMPEGException(Exception):
     pass
+
+
+class ConfigurationException(Exception):
+    pass

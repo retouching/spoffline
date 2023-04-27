@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from librespot.audio.decoders import VorbisOnlyAudioQuality
 
 from spoffline.helpers.exceptions import SpotifyException
+from spoffline.helpers.paths import DefaultPaths
 from spoffline.spotify.managers.albums import Albums
 from spoffline.spotify.managers.artists import Artists
 from spoffline.spotify.managers.playlists import Playlists
@@ -12,7 +13,16 @@ from spoffline.spotify.managers.tracks import Tracks
 
 
 class Client:
-    def __init__(self):
+    def __init__(
+        self,
+        email,
+        password,
+        cache_path=None
+    ):
+        self.cache_path = cache_path or DefaultPaths.get_cache_path()
+        self.email = email
+        self.password = password
+
         self.session = Session(self)
         self.tracks = Tracks(self)
         self.albums = Albums(self)

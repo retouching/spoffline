@@ -8,13 +8,13 @@ import httpx
 from mutagen.id3 import APIC, TALB, TEN, TPE1, TPOS, TRCK, TT2
 from mutagen.mp3 import MP3
 
-from spoffline.configuration import config
 from spoffline.helpers.binaries import Binaries
 from spoffline.helpers.exceptions import FFMPEGException
+from spoffline.helpers.paths import DefaultPaths
 
 
 def convert_to_mp3(filename, output, is_premium=False):
-    temp_file = os.path.join(config.paths.temp, f'{random.randbytes(16).hex()}.mp3')
+    temp_file = os.path.join(DefaultPaths.get_temp_path(), f'{random.randbytes(16).hex()}.mp3')
 
     p = subprocess.Popen([
         Binaries.get('ffmpeg'),
@@ -77,7 +77,7 @@ def apply_mp3_metadata(filename, *, name=None, artists=None, album=None, cover_u
         cache_cover_name.update(cover_url.encode())
         cache_cover_name = cache_cover_name.hexdigest()
 
-        album_art_path = os.path.join(config.paths.cache, 'spotify/covers', f'{cache_cover_name}.jpg')
+        album_art_path = os.path.join(DefaultPaths.get_cache_path(), 'spotify/covers', f'{cache_cover_name}.jpg')
         if not os.path.exists(album_art_path):
             os.makedirs(os.path.dirname(album_art_path), exist_ok=True)
 

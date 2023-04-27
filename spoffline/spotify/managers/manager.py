@@ -8,7 +8,10 @@ class Manager(abc.ABC):
 
     def __init__(self, client):
         self.client = client
-        self.cache = Cacher(f'spotify.{self.__class__.__name__.lower()}')
+        self.cache = Cacher(
+            f'spotify.{self.__class__.__name__.lower()}',
+            self.client.cache_path
+        )
 
     def get(self, _id, from_cache=True):
         raise NotImplementedError
