@@ -3,7 +3,6 @@ from urllib.parse import parse_qs, urlparse
 
 import httpx
 
-from spoffline.console import console
 from spoffline.helpers.exceptions import SpotifyException
 from spoffline.models.playlist import Playlist
 from spoffline.spotify.managers.manager import Manager
@@ -108,8 +107,7 @@ class Playlists(Manager):
                 if not item.get('is_playable', True):
                     continue
 
-                if item.get('type') == 'episode':
-                    console.warn(f"Episodes can't be handled at this time, skip {item.get('name')}")
+                if item.get('type') != 'track':
                     continue
 
                 track = self.client.tracks.to_model(item)
