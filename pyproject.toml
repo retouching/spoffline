@@ -3,12 +3,8 @@ name = "spoffline"
 version = "1.0.0"
 dependencies = [
     "librespot",
-    "click",
     "mutagen",
     "httpx",
-    "PyYAML",
-    "rich",
-    "ruff",
     "pydantic"
 ]
 
