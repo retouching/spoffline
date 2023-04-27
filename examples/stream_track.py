@@ -1,4 +1,7 @@
 import subprocess
+import time
+
+from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn
 
 from spoffline.spotify.client import Client
 
@@ -9,6 +12,10 @@ TRACK_URL = 'xxx'
 
 
 def main():
+    """
+    Stream music on ffplay
+    """
+
     # Create client
     client = Client(email=EMAIL, password=PASSWORD, cache_path='./cache')
 
@@ -22,7 +29,7 @@ def main():
 
     # spawn ffplay
     ffplay = subprocess.Popen(
-        ["ffplay", "-"],
+        ['ffplay', '-autoexit', '-'],
         stdin=subprocess.PIPE,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -30,12 +37,29 @@ def main():
 
     # Get track stream and send it to ffplay
     with client.get_stream(track.playable_id) as stream:
-        while True:
-            byte = stream.read(1)
-            if byte == -1:
-                return
-            ffplay.stdin.write(byte)
+        total_size = stream.size()
+
+        with Progress(
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            transient=True
+        ) as progress:
+            task = progress.add_task('Progress', total=total_size)
+
+            while True:
+                data = stream.read(8196)
+                if not data:
+                    break
+                progress.advance(task, ffplay.stdin.write(data))
+
+    # Wait a little and kill process
+    time.sleep(5)
+    if not ffplay.returncode:
+        ffplay.kill()
 
 
 if __name__ == '__main__':
     main()
+
+

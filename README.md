@@ -12,19 +12,20 @@
 <h2>Installation</h2>
 
 ```shell
-$ pip install "git+https://github.com/retouching/spoffline.git"
+$ pip install -U "git+https://github.com/retouching/spoffline.git"
 ```
 
 <h2>Usage</h2>
 
 <h3>1. CLI mode</h3>
+
 You must config your account:
 
 ```shell
 $ python -m spoffline auth [EMAIL] [PASSWORD]
 ```
 
-Next you can download: *(premium have 320kbp/s sstreams and free only 160kbp/s)*
+Next you can download: *(premium have 320kbp/s streams and free only 160kbp/s)*
 
 ```shell
 $ python -m spoffline dl [URL]
@@ -40,6 +41,6 @@ Examples can be found [here](./examples)
 
 <h2>Warning: Some things need to be considered</h2>
 
- - This project is not approved by Spotify.
+ - This project is not approved by Spotify
  - The worst that can happen is that you will be banned from Spotify
- - Some track is only available in some country (example with [Re-sublimity by KOTOKO](https://open.spotify.com/track/5ZBVGPIBgqjfJmzsd0IyP7) only available in Japan)
+ - Some track are only available in some countries (example with [Re-sublimity by KOTOKO](https://open.spotify.com/track/5ZBVGPIBgqjfJmzsd0IyP7) only available in Japan)

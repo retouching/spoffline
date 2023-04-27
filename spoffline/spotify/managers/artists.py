@@ -102,16 +102,16 @@ class Artists(Manager):
                 album = self.client.albums.to_model(item)
                 albums.append(album)
 
+            self.set_cache(f'{artist_id}:albums_chunk', {
+                'albums': albums,
+                'next_url': next_url
+            })
+
             for album in filter(
                 lambda a: a.id in [aa.get('id') for aa in data.get('items')],
                 albums
             ):
                 yield album
-
-            self.set_cache(f'{artist_id}:albums_chunk', {
-                'albums': albums,
-                'next_url': next_url
-            })
 
             if next_url:
                 time.sleep(2)

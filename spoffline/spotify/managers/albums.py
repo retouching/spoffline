@@ -106,7 +106,7 @@ class Albums(Manager):
                 track = self.client.tracks.to_model(item, album)
                 tracks.append(track)
 
-            self.set_cache(f'album:{album_id}:tracks_chunk', {
+            self.set_cache(f'{album_id}:tracks_chunk', {
                 'tracks': tracks,
                 'next_url': next_url
             })
