@@ -1,0 +1,9 @@
+librespot
+click
+mutagen
+httpx
+PyYAML
+rich
+ruff
+pydantic
+build
